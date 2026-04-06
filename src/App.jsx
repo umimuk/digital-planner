@@ -1,66 +1,55 @@
-import { useState, useEffect, createContext, useContext } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './lib/supabase'
-import Layout from './components/Layout'
-import LoginPage from './pages/LoginPage'
-import MonthlyPage from './pages/MonthlyPage'
-import WeeklyPage from './pages/WeeklyPage'
-import DayPage from './pages/DayPage'
-import './App.css'
+import { Toaster } from "@/components/ui/toaster"
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClientInstance } from '@/lib/query-client'
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import PageNotFound from './lib/PageNotFound';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import PlannerLayout from './components/planner/PlannerLayout';
+import MonthlyView from './pages/MonthlyView';
+import WeeklyView from './pages/WeeklyView';
+import DailyDetail from './pages/DailyDetail';
+import LoginPage from './pages/LoginPage';
 
-export const AuthContext = createContext(null)
+const AuthenticatedApp = () => {
+  const { isLoadingAuth, isAuthenticated } = useAuth();
 
-export function useAuth() {
-  return useContext(AuthContext)
-}
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
-function ProtectedRoute({ children }) {
-  const { session, loading } = useAuth()
-  if (loading) return <div className="loading-center">読み込み中...</div>
-  if (!session) return <Navigate to="/login" replace />
-  return children
-}
-
-function App() {
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
-    <AuthContext.Provider value={{ session, loading }}>
-      <BrowserRouter basename="/digital-planner">
-        <div className="app">
+    <Routes>
+      <Route element={<PlannerLayout />}>
+        <Route path="/" element={<MonthlyView />} />
+        <Route path="/weekly" element={<WeeklyView />} />
+      </Route>
+      <Route path="/day/:date" element={<DailyDetail />} />
+      <Route path="*" element={<PageNotFound />} />
+    </Routes>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <QueryClientProvider client={queryClientInstance}>
+        <Router basename="/digital-planner">
           <Routes>
-            <Route path="/login" element={
-              session ? <Navigate to="/" replace /> : <LoginPage />
-            } />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<MonthlyPage />} />
-              <Route path="weekly" element={<WeeklyPage />} />
-              <Route path="day/:date" element={<DayPage />} />
-            </Route>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
           </Routes>
-        </div>
-      </BrowserRouter>
-    </AuthContext.Provider>
+          <Toaster />
+        </Router>
+      </QueryClientProvider>
+    </AuthProvider>
   )
 }
 

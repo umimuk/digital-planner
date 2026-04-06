@@ -43,8 +43,8 @@ const styles = {
   },
   content: {
     flex: 1,
-    padding: '16px',
-    paddingBottom: '80px',
+    padding: '20px 16px',
+    paddingBottom: '84px',
   },
   nav: {
     position: 'fixed',
@@ -90,7 +90,12 @@ export default function Layout() {
   return (
     <div style={styles.wrapper}>
       <header style={styles.header}>
-        <div style={styles.logo}>
+        <div
+          style={{ ...styles.logo, cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => navigate('/')}
+          role="link"
+          aria-label="トップに戻る"
+        >
           <span>🌸</span>
           <span>my planner</span>
         </div>
